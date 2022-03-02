@@ -1,9 +1,10 @@
 import fs from 'fs';
 import readline from 'readline';
 
-let hasChar: string[] = [];
-let positionalChar: string[] = [];
-let noChar: string[] = [];
+let hasChar: string[] = []; // chars that are in the word
+let positionalChar: string[] = ['_', '_', '_', '_', '_']; // chars that are in the right position!
+let positionalNoChar: Array<string[]> = [[], [], [], [], []]; // chars that are in the wrong position (could be in the word)
+let noChar: string[] = []; // chars that aren't in the word at all!
 
 const words = fs
   .readFileSync('./words_five.txt')
@@ -12,31 +13,31 @@ const words = fs
 
 console.log("loaded words!");
 
-console.log("try 'audio' first, lots of vowels so it should help us!\nI'll ask a bunch of questions, if nothing has changed leave it blank!");
+console.log("try 'audio' first, lots of vowels so it should help us!\nI'll ask a bunch of questions after!");
 
 async function main() {
-  while (true) {
-    // loop until user cancels or we get all five
+  let guess = 'audio'; // try this first and then ask questions
 
-    await readIntel();
+  while (true) {
+    await readIntel(guess);
+
+    // debug();
 
     console.log("grabbing some words!");
 
-    const guesses = [];
     for (const word of words) {
       if (
         containsAll(word, positionalChar) &&
         containsAll(word, hasChar) &&
         containsPos(word, positionalChar) &&
-        doesNotContain(word, noChar)
+        doesNotContain(word, noChar) && 
+        doesNotContainPos(word, positionalNoChar)
       ) {
-        guesses.push(word);
+        guess = word;
+        console.log(`Try this ${guess}!`);
+        break;
       }
-
-      if (guesses.length > 2) break;
     }
-
-    console.log(`Try this ${guesses.join(',')}!`);
   }
 }
 main();
@@ -70,6 +71,13 @@ function doesNotContain(word: string, noChar: string[]) {
   return true;
 }
 
+function doesNotContainPos(word: string, postionalNoChar: Array<string[]>) {
+  for (let i=0; i<word.length; i++) {
+    if (positionalNoChar[i].includes(word[i])) return false;
+  }
+  return true;
+}
+
 function input(q) {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
   return new Promise(resolve => rl.question(q, resolve)).then((response) => {
@@ -78,16 +86,30 @@ function input(q) {
   });
 }
 
-async function readIntel() {
-  let res = await input('What letters did you find? : ');
-  if (res && res.length)
-    hasChar = hasChar.concat(res.split(''));
+function debug() {
+  console.log(`debug!\n. no char : ${JSON.stringify(noChar)}\n  posChar : ${JSON.stringify(positionalChar)}\n  hasChar : ${JSON.stringify(hasChar)}\n positionalNoChar : ${JSON.stringify(positionalNoChar)}\n`);
+}
 
-  res = await input('What positional letters do we know? : ');
-  if (res && res.length)
-    positionalChar = res.split('');
-
-  res = await input('What letters did you learn are not in the word? : ');
-  if (res && res.length)
-    noChar = noChar.concat(res.split(''));
+async function readIntel(word: string) {
+  const res = await input('What\'s the result (b - not in word | g - yes | y - wrong spot)? :');
+  if (res && res.length) {
+    res.split('').forEach((state, i) => {
+      if (state === 'b' && !noChar.includes(word[i]) && !hasChar.includes(word[i])) {
+        noChar.push(word[i]);
+      } else if (state === 'g') {
+        positionalChar[i] = word[i];
+        if (!hasChar.includes(word[i])) hasChar.push(word[i]);
+      } else if (state === 'y') {
+        if (!hasChar.includes(word[i])) hasChar.push(word[i]);
+        if (!positionalNoChar[i].includes(word[i]))
+          positionalNoChar[i].push(word[i]);
+      }
+    });
+  } else {
+    console.log('issue with that suggestion? It\'s banned!');
+    word.split('').forEach((c, i) => {
+      if (!positionalNoChar[i].includes(c))
+        positionalNoChar[i].push(c);
+    });
+  }
 }
