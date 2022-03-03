@@ -5,6 +5,7 @@ let hasChar: string[] = []; // chars that are in the word
 let positionalChar: string[] = ['_', '_', '_', '_', '_']; // chars that are in the right position!
 let positionalNoChar: Array<string[]> = [[], [], [], [], []]; // chars that are in the wrong position (could be in the word)
 let noChar: string[] = []; // chars that aren't in the word at all!
+const bannedWords: string[] = [];
 
 const words = fs
   .readFileSync('./words_five.txt')
@@ -27,6 +28,7 @@ async function main() {
 
     for (const word of words) {
       if (
+        !bannedWords.includes(word) &&
         containsAll(word, positionalChar) &&
         containsAll(word, hasChar) &&
         containsPos(word, positionalChar) &&
@@ -107,9 +109,6 @@ async function readIntel(word: string) {
     });
   } else {
     console.log('issue with that suggestion? It\'s banned!');
-    word.split('').forEach((c, i) => {
-      if (!positionalNoChar[i].includes(c))
-        positionalNoChar[i].push(c);
-    });
+    bannedWords.push(word);
   }
 }
